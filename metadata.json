@@ -1,0 +1,6 @@
+{
+  "name": "EduVideo Generator",
+  "description": "Generate engaging, ready-to-watch animated educational lessons on any topic, for any class, using AI!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
