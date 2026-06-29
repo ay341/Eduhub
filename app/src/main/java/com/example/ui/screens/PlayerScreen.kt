@@ -32,7 +32,7 @@ fun PlayerScreen(
     lesson: VideoLesson,
     modifier: Modifier = Modifier
 ) {
-    var quizSelectedTab by remember { mutableStateOf(1) } // Default to Script or Notes first, until video finishes!
+    var quizSelectedTab by remember { mutableStateOf(2) } // Default to Script (now index 2) first, until video finishes!
 
     Scaffold(
         topBar = {

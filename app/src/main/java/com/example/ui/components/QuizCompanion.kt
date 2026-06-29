@@ -1,6 +1,8 @@
 package com.example.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,6 +14,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
@@ -19,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
@@ -35,7 +40,7 @@ fun QuizCompanion(
     modifier: Modifier = Modifier
 ) {
     var activeTab by remember { mutableStateOf(selectedQuizTab) }
-    val tabs = listOf("Quiz", "Script", "Notes")
+    val tabs = listOf("Quiz", "Flashcards", "Script", "Notes")
 
     Card(
         colors = CardDefaults.cardColors(
@@ -87,8 +92,9 @@ fun QuizCompanion(
             ) { tabIndex ->
                 when (tabIndex) {
                     0 -> InteractiveQuizTab(quiz = lesson.quiz)
-                    1 -> NarrationScriptTab(lesson = lesson)
-                    2 -> StudyNotesTab(lesson = lesson)
+                    1 -> FlashcardsTab(lesson = lesson)
+                    2 -> NarrationScriptTab(lesson = lesson)
+                    3 -> StudyNotesTab(lesson = lesson)
                 }
             }
         }
@@ -473,6 +479,208 @@ fun StudyNotesTab(lesson: VideoLesson) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FlashcardsTab(lesson: VideoLesson) {
+    val scenes = lesson.scenes
+    if (scenes.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No content available for flashcards.", color = Color(0xFF49454F), fontSize = 14.sp)
+        }
+        return
+    }
+
+    var currentCardIndex by remember { mutableStateOf(0) }
+    val currentScene = scenes[currentCardIndex]
+    
+    // Reset flip state when card changes
+    var isFlipped by remember(currentCardIndex) { mutableStateOf(false) }
+    
+    val rotation by animateFloatAsState(
+        targetValue = if (isFlipped) 180f else 0f,
+        animationSpec = tween(durationMillis = 400),
+        label = "CardFlipRotation"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Flashcard 3D Container
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(210.dp)
+                .graphicsLayer {
+                    rotationY = rotation
+                    cameraDistance = 8 * density
+                }
+                .clip(RoundedCornerShape(16.dp))
+                .clickable { isFlipped = !isFlipped }
+                .background(
+                    if (rotation <= 90f) {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
+                    }
+                )
+                .border(
+                    width = 1.5.dp,
+                    color = if (rotation <= 90f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                    shape = RoundedCornerShape(16.dp)
+                )
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (rotation <= 90f) {
+                // Front Side
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.School,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "CONCEPT ${currentCardIndex + 1}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 1.5.sp
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = currentScene.title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Autorenew,
+                            contentDescription = "Flip Icon",
+                            tint = Color(0xFF79747E),
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Tap Card to Flip",
+                            fontSize = 11.sp,
+                            color = Color(0xFF79747E),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            } else {
+                // Back Side (mirrored back using rotationY = 180f)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationY = 180f
+                        },
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "KEY TAKEAWAYS",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    
+                    val points = currentScene.textOnScreen.split("\n")
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        points.forEach { point ->
+                            if (point.isNotBlank()) {
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Icon(
+                                        imageVector = Icons.Default.Star,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.secondary,
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .padding(top = 2.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = point.trim().removePrefix("•").removePrefix("-").trim(),
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        lineHeight = 16.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Navigation Controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    if (currentCardIndex > 0) {
+                        currentCardIndex--
+                    }
+                },
+                enabled = currentCardIndex > 0
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Previous card"
+                )
+            }
+
+            Text(
+                text = "Card ${currentCardIndex + 1} of ${scenes.size}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            IconButton(
+                onClick = {
+                    if (currentCardIndex < scenes.lastIndex) {
+                        currentCardIndex++
+                    }
+                },
+                enabled = currentCardIndex < scenes.lastIndex
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "Next card"
+                )
             }
         }
     }
