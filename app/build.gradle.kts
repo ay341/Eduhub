@@ -33,6 +33,27 @@ android {
     }
     create("debugConfig") {
       val keystoreFile = file("${rootDir}/debug.keystore")
+      if (!keystoreFile.exists()) {
+        try {
+          val builder = ProcessBuilder(
+            "keytool", "-genkey", "-v",
+            "-keystore", keystoreFile.absolutePath,
+            "-storepass", "android",
+            "-alias", "androiddebugkey",
+            "-keypass", "android",
+            "-keyalg", "RSA",
+            "-keysize", "2048",
+            "-validity", "10000",
+            "-dname", "CN=Android Debug,O=Android,C=US"
+          )
+          builder.inheritIO()
+          val process = builder.start()
+          process.waitFor()
+          println("Successfully generated a new debug.keystore file at ${keystoreFile.absolutePath}")
+        } catch (e: Exception) {
+          e.printStackTrace()
+        }
+      }
       if (keystoreFile.exists()) {
         storeFile = keystoreFile
         storePassword = "android"

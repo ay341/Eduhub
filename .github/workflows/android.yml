@@ -35,13 +35,30 @@ jobs:
           touch .env
         fi
 
-    - name: Decode Debug Keystore
+    - name: Ensure Debug Keystore is present
       run: |
         if [ -f debug.keystore.base64 ]; then
-          python3 -c "import base64; open('debug.keystore', 'wb').write(base64.b64decode(open('debug.keystore.base64', 'rb').read()))"
-          echo "Successfully decoded debug.keystore from base64"
-        else
-          echo "Warning: debug.keystore.base64 not found. Falling back to default SDK/Gradle debug keystore."
+          echo "Attempting to decode debug.keystore from base64..."
+          python3 -c "
+import base64, sys
+try:
+    data = open('debug.keystore.base64', 'rb').read()
+    # clean whitespaces and newlines
+    data = b''.join(data.split())
+    # fix padding
+    data += b'=' * ((4 - len(data) % 4) % 4)
+    decoded = base64.b64decode(data)
+    open('debug.keystore', 'wb').write(decoded)
+    print('Successfully decoded debug.keystore from base64!')
+except Exception as e:
+    print(f'Decoding failed: {e}. A new keystore will be generated instead.')
+"
+        fi
+        
+        if [ ! -f debug.keystore ]; then
+          echo "debug.keystore not found or decode failed. Generating a new one using keytool..."
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          echo "Successfully generated fallback debug.keystore!"
         fi
 
     - name: Clean CRLF Line Endings in gradlew
