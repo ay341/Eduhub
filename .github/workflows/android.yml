@@ -21,7 +21,9 @@ jobs:
       with:
         java-version: '21'
         distribution: 'temurin'
-        cache: gradle
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
 
     - name: Create .env file from .env.example
       run: |
@@ -36,14 +38,19 @@ jobs:
     - name: Decode Debug Keystore
       run: |
         if [ -f debug.keystore.base64 ]; then
-          base64 -d debug.keystore.base64 > debug.keystore
+          python3 -c "import base64; open('debug.keystore', 'wb').write(base64.b64decode(open('debug.keystore.base64', 'rb').read()))"
           echo "Successfully decoded debug.keystore from base64"
         else
           echo "Warning: debug.keystore.base64 not found. Falling back to default SDK/Gradle debug keystore."
         fi
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+    - name: Clean CRLF Line Endings in gradlew
+      run: |
+        sed -i -e 's/\r$//' gradlew
+        chmod +x gradlew
+
+    - name: Verify Gradle Wrapper
+      run: ./gradlew --version
 
     - name: Build Signed APKs with Gradle
       run: ./gradlew assembleDebug assembleRelease --stacktrace
