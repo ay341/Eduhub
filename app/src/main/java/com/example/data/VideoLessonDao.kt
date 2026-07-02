@@ -17,6 +17,15 @@ interface VideoLessonDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLesson(lesson: VideoLesson): Long
 
+    @androidx.room.Update
+    suspend fun updateLesson(lesson: VideoLesson)
+
+    @Query("UPDATE video_lessons SET isBookmarked = :isBookmarked WHERE id = :id")
+    suspend fun updateBookmark(id: Long, isBookmarked: Boolean)
+
+    @Query("UPDATE video_lessons SET isCompleted = :isCompleted, quizScore = :quizScore WHERE id = :id")
+    suspend fun updateLessonCompletion(id: Long, isCompleted: Boolean, quizScore: Int)
+
     @Query("DELETE FROM video_lessons WHERE id = :id")
     suspend fun deleteLessonById(id: Long)
 

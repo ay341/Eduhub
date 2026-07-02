@@ -19,7 +19,29 @@ data class QuizQuestion(
     val question: String,
     val options: List<String>,
     val correctAnswerIndex: Int,
-    val explanation: String
+    val explanation: String,
+    val type: String = "MULTIPLE_CHOICE" // "MULTIPLE_CHOICE", "TRUE_FALSE", "FILL_IN_BLANKS"
+)
+
+data class KeyConcept(
+    val title: String,
+    val description: String,
+    val detailedExplanation: String
+)
+
+data class MindMapNode(
+    val id: String,
+    val label: String,
+    val description: String,
+    val parentId: String? = null
+)
+
+data class Flashcard(
+    val id: Int,
+    val front: String,
+    val back: String,
+    val isLearned: Boolean = false,
+    val isBookmarked: Boolean = false
 )
 
 @Entity(tableName = "video_lessons")
@@ -30,7 +52,37 @@ data class VideoLesson(
     val durationMinutes: Int,
     val timestamp: Long = System.currentTimeMillis(),
     val scenes: List<VideoScene>,
-    val quiz: List<QuizQuestion>
+    val quiz: List<QuizQuestion>,
+    val subject: String? = null,
+    val board: String? = null,
+    val language: String? = null,
+    val difficulty: String? = null,
+    val teachingStyle: String? = null,
+    val lessonPlan: String? = null,
+    val detailedNotes: String? = null,
+    val chapterSummary: String? = null,
+    val dpp: List<String>? = null,
+    val pyqs: List<String>? = null,
+    val isBookmarked: Boolean = false,
+    val isCompleted: Boolean = false,
+    val quizScore: Int? = null,
+    
+    // AI Learning Journey additions
+    val shortExplanation: String = "",
+    val detailedExplanation: String = "",
+    val realLifeExamples: List<String> = emptyList(),
+    val commonMistakes: List<String> = emptyList(),
+    val practicalApplications: List<String> = emptyList(),
+    val keyConcepts: List<KeyConcept> = emptyList(),
+    val mindMapNodes: List<MindMapNode> = emptyList(),
+    val flashcards: List<Flashcard> = emptyList(),
+    
+    // Progress Tracking additions
+    val isVideoCompleted: Boolean = false,
+    val isSummaryRead: Boolean = false,
+    val isFlashcardsStudied: Boolean = false,
+    val totalTimeSpentSeconds: Int = 0,
+    val completionPercentage: Int = 0
 )
 
 class Converters {
@@ -67,6 +119,70 @@ class Converters {
         if (json == null) return null
         val type = Types.newParameterizedType(List::class.java, QuizQuestion::class.java)
         val adapter = moshi.adapter<List<QuizQuestion>>(type)
+        return adapter.fromJson(json)
+    }
+
+    @TypeConverter
+    fun fromStringList(value: List<String>?): String? {
+        if (value == null) return null
+        val type = Types.newParameterizedType(List::class.java, String::class.java)
+        val adapter = moshi.adapter<List<String>>(type)
+        return adapter.toJson(value)
+    }
+
+    @TypeConverter
+    fun toStringList(json: String?): List<String>? {
+        if (json == null) return null
+        val type = Types.newParameterizedType(List::class.java, String::class.java)
+        val adapter = moshi.adapter<List<String>>(type)
+        return adapter.fromJson(json)
+    }
+
+    @TypeConverter
+    fun fromKeyConceptList(value: List<KeyConcept>?): String? {
+        if (value == null) return null
+        val type = Types.newParameterizedType(List::class.java, KeyConcept::class.java)
+        val adapter = moshi.adapter<List<KeyConcept>>(type)
+        return adapter.toJson(value)
+    }
+
+    @TypeConverter
+    fun toKeyConceptList(json: String?): List<KeyConcept>? {
+        if (json == null) return null
+        val type = Types.newParameterizedType(List::class.java, KeyConcept::class.java)
+        val adapter = moshi.adapter<List<KeyConcept>>(type)
+        return adapter.fromJson(json)
+    }
+
+    @TypeConverter
+    fun fromMindMapNodeList(value: List<MindMapNode>?): String? {
+        if (value == null) return null
+        val type = Types.newParameterizedType(List::class.java, MindMapNode::class.java)
+        val adapter = moshi.adapter<List<MindMapNode>>(type)
+        return adapter.toJson(value)
+    }
+
+    @TypeConverter
+    fun toMindMapNodeList(json: String?): List<MindMapNode>? {
+        if (json == null) return null
+        val type = Types.newParameterizedType(List::class.java, MindMapNode::class.java)
+        val adapter = moshi.adapter<List<MindMapNode>>(type)
+        return adapter.fromJson(json)
+    }
+
+    @TypeConverter
+    fun fromFlashcardList(value: List<Flashcard>?): String? {
+        if (value == null) return null
+        val type = Types.newParameterizedType(List::class.java, Flashcard::class.java)
+        val adapter = moshi.adapter<List<Flashcard>>(type)
+        return adapter.toJson(value)
+    }
+
+    @TypeConverter
+    fun toFlashcardList(json: String?): List<Flashcard>? {
+        if (json == null) return null
+        val type = Types.newParameterizedType(List::class.java, Flashcard::class.java)
+        val adapter = moshi.adapter<List<Flashcard>>(type)
         return adapter.fromJson(json)
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,11 +29,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.VideoLesson
+import com.example.ui.EduVideoViewModel
 import kotlinx.coroutines.delay
 import java.util.Locale
 
 @Composable
 fun EduVideoPlayer(
+    viewModel: EduVideoViewModel,
     lesson: VideoLesson,
     onVideoFinished: () -> Unit,
     modifier: Modifier = Modifier
@@ -45,8 +48,12 @@ fun EduVideoPlayer(
     var currentSceneElapsedTime by remember { mutableStateOf(0f) }
     var isMuted by remember { mutableStateOf(false) }
     var showSubtitles by remember { mutableStateOf(true) }
+    var showSettingsMenu by remember { mutableStateOf(false) }
 
-    // TTS Setup
+    // TTS Setup & Speed Preferences
+    val speechRate by viewModel.ttsSpeechRate.collectAsState()
+    val pitch by viewModel.ttsPitch.collectAsState()
+
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
 
@@ -65,18 +72,20 @@ fun EduVideoPlayer(
 
     val currentScene = lesson.scenes.getOrNull(currentSceneIndex)
 
-    // Speech trigger
-    LaunchedEffect(currentSceneIndex, isPlaying, isMuted, ttsReady) {
+    // Speech trigger - Reacts to speed and pitch adjustments live
+    LaunchedEffect(currentSceneIndex, isPlaying, isMuted, ttsReady, speechRate, pitch) {
         if (isPlaying && !isMuted && ttsReady && currentScene != null) {
             tts?.stop()
+            tts?.setSpeechRate(speechRate)
+            tts?.setPitch(pitch)
             tts?.speak(currentScene.voiceoverText, TextToSpeech.QUEUE_FLUSH, null, "edu_scene_${currentSceneIndex}")
         } else {
             tts?.stop()
         }
     }
 
-    // Playback Timer Loop
-    LaunchedEffect(isPlaying, currentSceneIndex) {
+    // Playback Timer Loop - Synchronized with speech rate
+    LaunchedEffect(isPlaying, currentSceneIndex, speechRate) {
         if (isPlaying && currentScene != null) {
             val totalSceneDurationMs = currentScene.durationSeconds * 1000
             var elapsedMs = (currentSceneElapsedTime * 1000).toInt()
@@ -84,7 +93,7 @@ fun EduVideoPlayer(
             while (elapsedMs < totalSceneDurationMs) {
                 delay(50)
                 if (!isPlaying) break
-                elapsedMs += 50
+                elapsedMs += (50 * speechRate).toInt()
                 currentSceneElapsedTime = elapsedMs / 1000f
             }
 
@@ -426,23 +435,128 @@ fun EduVideoPlayer(
                 }
             }
 
-            // Right Group: Restart Scene / Status Indicator
-            IconButton(
-                onClick = {
-                    currentSceneElapsedTime = 0f
-                    // Re-speak
-                    if (isPlaying && !isMuted && ttsReady && currentScene != null) {
-                        tts?.stop()
-                        tts?.speak(currentScene.voiceoverText, TextToSpeech.QUEUE_FLUSH, null, "edu_scene_${currentSceneIndex}")
-                    }
-                },
-                modifier = Modifier.testTag("restart_scene_button")
+            // Right Group: Voice Settings and Restart Scene
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Replay,
-                    contentDescription = "Restart Scene",
-                    tint = Color(0xFF79747E)
-                )
+                IconButton(
+                    onClick = { showSettingsMenu = !showSettingsMenu },
+                    modifier = Modifier.testTag("playback_settings_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Voice Settings",
+                        tint = if (showSettingsMenu) MaterialTheme.colorScheme.primary else Color(0xFF79747E)
+                    )
+                }
+
+                IconButton(
+                    onClick = {
+                        currentSceneElapsedTime = 0f
+                        // Re-speak
+                        if (isPlaying && !isMuted && ttsReady && currentScene != null) {
+                            tts?.stop()
+                            tts?.setSpeechRate(speechRate)
+                            tts?.setPitch(pitch)
+                            tts?.speak(currentScene.voiceoverText, TextToSpeech.QUEUE_FLUSH, null, "edu_scene_${currentSceneIndex}")
+                        }
+                    },
+                    modifier = Modifier.testTag("restart_scene_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Replay,
+                        contentDescription = "Restart Scene",
+                        tint = Color(0xFF79747E)
+                    )
+                }
+            }
+        }
+
+        // --- Voice Preferences Panel ---
+        AnimatedVisibility(
+            visible = showSettingsMenu,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "VOICEPLAY PREFERENCES",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        letterSpacing = 0.8.sp
+                    )
+
+                    // Speed slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Delivery Rate: ${String.format(Locale.getDefault(), "%.1fx", speechRate)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Speed of speech voiceover",
+                                fontSize = 10.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                        
+                        Slider(
+                            value = speechRate,
+                            onValueChange = { viewModel.updateTtsSpeechRate(it) },
+                            valueRange = 0.5f..2.0f,
+                            steps = 5,
+                            modifier = Modifier.width(140.dp)
+                        )
+                    }
+
+                    // Pitch slider
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Voice Pitch: ${String.format(Locale.getDefault(), "%.1fx", pitch)}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Tone pitch of virtual tutor",
+                                fontSize = 10.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                        
+                        Slider(
+                            value = pitch,
+                            onValueChange = { viewModel.updateTtsPitch(it) },
+                            valueRange = 0.5f..2.0f,
+                            steps = 5,
+                            modifier = Modifier.width(140.dp)
+                        )
+                    }
+                }
             }
         }
     }

@@ -19,8 +19,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.VideoLesson
@@ -35,13 +35,22 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var bookmarkedOnlyFilter by remember { mutableStateOf(false) }
+
+    val filteredLessons = lessons.filter { lesson ->
+        val matchesQuery = lesson.topic.contains(searchQuery, ignoreCase = true) ||
+                (lesson.subject?.contains(searchQuery, ignoreCase = true) == true)
+        val matchesBookmark = !bookmarkedOnlyFilter || lesson.isBookmarked
+        matchesQuery && matchesBookmark
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "Saved Lessons",
+                        "My Lecture Vault",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground
@@ -49,7 +58,7 @@ fun LibraryScreen(
                 },
                 navigationIcon = {
                     IconButton(
-                        onClick = { viewModel.setScreen(AppScreen.Home) },
+                        onClick = { viewModel.setScreen(AppScreen.Dashboard) },
                         modifier = Modifier.testTag("library_back_button")
                     ) {
                         Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onBackground)
@@ -74,17 +83,77 @@ fun LibraryScreen(
         containerColor = MaterialTheme.colorScheme.background,
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            if (lessons.isEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Search Bar & Filter Action Row
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = { Text("Search lessons, subjects, board...", color = Color(0xFF64748B)) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Filtering chips Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = !bookmarkedOnlyFilter,
+                    onClick = { bookmarkedOnlyFilter = false },
+                    label = { Text("All Lessons", fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+                )
+
+                FilterChip(
+                    selected = bookmarkedOnlyFilter,
+                    onClick = { bookmarkedOnlyFilter = true },
+                    label = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Bookmark,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = if (bookmarkedOnlyFilter) MaterialTheme.colorScheme.primary else Color(0xFF64748B)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Bookmarked", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                Text(
+                    text = "${filteredLessons.size} items",
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            if (filteredLessons.isEmpty()) {
                 // Empty state illustration & button
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .weight(1f)
+                        .fillMaxWidth()
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -106,7 +175,7 @@ fun LibraryScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
-                        "Your Video Library is Empty",
+                        text = if (lessons.isEmpty()) "Your Video Library is Empty" else "No Lessons Found",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onBackground,
@@ -116,9 +185,9 @@ fun LibraryScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        "Input a school topic, select a class, and generate an engaging ready-to-watch AI video lesson!",
+                        text = if (lessons.isEmpty()) "Input a school topic, select a class, and generate an engaging ready-to-watch AI video lesson!" else "Try broadening your query or disabling your filters.",
                         fontSize = 13.sp,
-                        color = Color(0xFF49454F),
+                        color = Color(0xFF64748B),
                         textAlign = TextAlign.Center,
                         lineHeight = 18.sp,
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -140,10 +209,10 @@ fun LibraryScreen(
             } else {
                 // History List
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxSize()
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 ) {
-                    items(lessons, key = { it.id }) { lesson ->
+                    items(filteredLessons, key = { it.id }) { lesson ->
                         val timeAgo = DateUtils.getRelativeTimeSpanString(
                             lesson.timestamp,
                             System.currentTimeMillis(),
@@ -165,27 +234,27 @@ fun LibraryScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 // Left video icon avatar
                                 Box(
                                     modifier = Modifier
-                                        .size(48.dp)
+                                        .size(44.dp)
                                         .clip(RoundedCornerShape(12.dp))
                                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
                                         .border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.PlayCircle,
+                                        imageVector = if (lesson.isCompleted) Icons.Default.CheckCircle else Icons.Default.PlayCircle,
                                         contentDescription = "Watch",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
+                                        tint = if (lesson.isCompleted) Color(0xFF10B981) else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.width(14.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
 
                                 // Text metadata details
                                 Column(modifier = Modifier.weight(1f)) {
@@ -200,8 +269,8 @@ fun LibraryScreen(
 
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.padding(top = 4.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(top = 2.dp)
                                     ) {
                                         Text(
                                             text = lesson.studentClass,
@@ -212,33 +281,58 @@ fun LibraryScreen(
                                         Text(
                                             text = "•",
                                             fontSize = 11.sp,
-                                            color = Color(0xFFCAC4D0)
+                                            color = Color(0xFFE2E8F0)
                                         )
                                         Text(
-                                            text = "${lesson.durationMinutes} min scale",
+                                            text = "${lesson.subject ?: "Science"}",
                                             fontSize = 11.sp,
-                                            color = Color(0xFF49454F)
+                                            color = Color(0xFF64748B)
                                         )
                                     }
 
-                                    Text(
-                                        text = timeAgo,
-                                        fontSize = 10.sp,
-                                        color = Color(0xFF49454F),
-                                        modifier = Modifier.padding(top = 4.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = timeAgo,
+                                            fontSize = 10.sp,
+                                            color = Color(0xFF64748B)
+                                        )
+                                        if (lesson.quizScore != null) {
+                                            Text(text = "•", fontSize = 10.sp, color = Color(0xFFCBD5E1))
+                                            Text(
+                                                text = "Quiz: ${lesson.quizScore}/${lesson.quiz.size}",
+                                                fontSize = 10.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF10B981)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(6.dp))
+
+                                // Bookmark Toggle Button
+                                IconButton(
+                                    onClick = { viewModel.toggleBookmark(lesson) }
+                                ) {
+                                    Icon(
+                                        imageVector = if (lesson.isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                        contentDescription = "Bookmark",
+                                        tint = if (lesson.isBookmarked) MaterialTheme.colorScheme.primary else Color(0xFF94A3B8)
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                // Single Delete Button
+                                // Delete Button
                                 IconButton(
                                     onClick = { viewModel.deleteLesson(lesson.id) },
                                     modifier = Modifier.testTag("delete_lesson_${lesson.id}")
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Lesson",
+                                        contentDescription = "Delete",
                                         tint = Color(0xFFEF4444)
                                     )
                                 }
@@ -255,7 +349,7 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },
             title = { Text("Clear All History?", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to permanently delete all generated educational video lessons from your local storage?", color = Color(0xFF49454F)) },
+            text = { Text("Are you sure you want to permanently delete all generated educational video lessons from your local storage?", color = Color(0xFF64748B)) },
             confirmButton = {
                 Button(
                     onClick = {

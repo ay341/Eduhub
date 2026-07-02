@@ -83,6 +83,7 @@ fun PlayerScreen(
 
             // 1. The Immersive Custom Video Player
             EduVideoPlayer(
+                viewModel = viewModel,
                 lesson = lesson,
                 onVideoFinished = {
                     // Video finished playing! Automatically switch active tab to Quiz
@@ -124,6 +125,7 @@ fun PlayerScreen(
             // Key is used to reconstruct companion tabs when video changes or finishes
             key(lesson.id, quizSelectedTab) {
                 QuizCompanion(
+                    viewModel = viewModel,
                     lesson = lesson,
                     selectedQuizTab = quizSelectedTab
                 )

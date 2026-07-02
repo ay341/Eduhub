@@ -10,6 +10,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.Query
+import retrofit2.http.Path
 import java.util.concurrent.TimeUnit
 
 // --- Gemini REST API Data Classes ---
@@ -41,17 +42,68 @@ data class GenerateContentResponse(
     val candidates: List<Candidate>?
 )
 
+// --- Robust API-specific response models to prevent parsing exceptions ---
+data class ApiVideoScene(
+    val title: String? = null,
+    val visualPrompt: String? = null,
+    val textOnScreen: String? = null,
+    val voiceoverText: String? = null,
+    val durationSeconds: Int? = null
+)
+
+data class ApiQuizQuestion(
+    val question: String? = null,
+    val options: List<String>? = null,
+    val correctAnswerIndex: Int? = null,
+    val explanation: String? = null,
+    val type: String? = null
+)
+
+data class ApiKeyConcept(
+    val title: String? = null,
+    val description: String? = null,
+    val detailedExplanation: String? = null
+)
+
+data class ApiMindMapNode(
+    val id: String? = null,
+    val label: String? = null,
+    val description: String? = null,
+    val parentId: String? = null
+)
+
+data class ApiFlashcard(
+    val front: String? = null,
+    val back: String? = null
+)
+
 // --- Custom wrapper for the output we expect from Gemini ---
 data class GeneratedLessonResponse(
-    val scenes: List<VideoScene>,
-    val quiz: List<QuizQuestion>
+    val scenes: List<ApiVideoScene>? = null,
+    val quiz: List<ApiQuizQuestion>? = null,
+    val lessonPlan: String? = null,
+    val detailedNotes: String? = null,
+    val chapterSummary: String? = null,
+    val dpp: List<String>? = null,
+    val pyqs: List<String>? = null,
+    
+    // Learning Journey fields
+    val shortExplanation: String? = null,
+    val detailedExplanation: String? = null,
+    val realLifeExamples: List<String>? = null,
+    val commonMistakes: List<String>? = null,
+    val practicalApplications: List<String>? = null,
+    val keyConcepts: List<ApiKeyConcept>? = null,
+    val mindMapNodes: List<ApiMindMapNode>? = null,
+    val flashcards: List<ApiFlashcard>? = null
 )
 
 // --- Retrofit Interface ---
 
 interface GeminiApiService {
-    @POST("v1beta/models/gemini-3.5-flash:generateContent")
+    @POST("v1beta/models/{model}:generateContent")
     suspend fun generateContent(
+        @Path("model") model: String,
         @Query("key") apiKey: String,
         @Body request: GenerateContentRequest
     ): GenerateContentResponse

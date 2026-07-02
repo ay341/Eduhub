@@ -13,6 +13,18 @@ class VideoLessonRepository(private val videoLessonDao: VideoLessonDao) {
         return videoLessonDao.insertLesson(lesson)
     }
 
+    suspend fun updateLesson(lesson: VideoLesson) {
+        videoLessonDao.updateLesson(lesson)
+    }
+
+    suspend fun updateBookmark(id: Long, isBookmarked: Boolean) {
+        videoLessonDao.updateBookmark(id, isBookmarked)
+    }
+
+    suspend fun updateLessonCompletion(id: Long, isCompleted: Boolean, quizScore: Int) {
+        videoLessonDao.updateLessonCompletion(id, isCompleted, quizScore)
+    }
+
     suspend fun deleteLesson(id: Long) {
         videoLessonDao.deleteLessonById(id)
     }
